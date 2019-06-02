@@ -74,6 +74,11 @@ class OctConv2d(nn.modules.conv._ConvNd):
         high_group_pooled = self.avgpool(high_group)
 
         if self.oct_type in ('first', 'A'):
+            ```
+                         ↗ -> H
+            In -> [Conv] 
+                         ↘ [Pooling] -> [Conv] - L 
+            ```
             high_group_hl = F.conv2d(high_group_pooled, self.high_hl_weight, self.high_hl_bias, self.stride,
                         self.padding, self.dilation, self.groups)
             high_group_out, low_group_out = high_group_hh, high_group_hl
@@ -81,14 +86,23 @@ class OctConv2d(nn.modules.conv._ConvNd):
             return high_group_out, low_group_out
 
         elif self.oct_type in ('last', 'C'):
+            ```
+            H -> [Conv]     ↘
+                              [+] -> Out
+            L -> [Upsample] ↗
+            ```
             low_group_lh = F.conv2d(low_group, self.low_lh_weight, self.low_lh_bias, self.stride,
                             self.padding, self.dilation, self.groups)
             low_group_upsampled = F.interpolate(low_group_lh, scale_factor=2)
             high_group_out = high_group_hh + low_group_upsampled
 
             return high_group_out
-
         else:
+            ```
+            H -> [Conv] -> [Pooling]  -> H
+                      [eXchange]
+            L -> [Conv] -> [Upsample] -> L 
+            ```
             high_group_hl = F.conv2d(high_group_pooled, self.high_hl_weight, self.high_hl_bias, self.stride,
                         self.padding, self.dilation, self.groups)
             low_group_lh = F.conv2d(low_group, self.low_lh_weight, self.low_lh_bias, self.stride,
